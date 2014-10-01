@@ -1,4 +1,4 @@
-class Utils
+class Util
   def self.numeric?(str) 
     begin 
       result = Float(str) ? true : false
