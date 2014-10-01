@@ -190,9 +190,7 @@ class Game
   def play
     reset
     wait
-    deal_to_player
-    wait
-    deal_to_dealer
+    deal
     wait
     player_turn
     if has_blackjack?(@player)
@@ -326,36 +324,20 @@ class Game
     end
   end
   
-  def deal_to_player
-    # --- TEMP. These are just test deals
-    # deal_test_cards(@player, [@deck.get_card("A", "D"), @deck.get_card("10", "S")])
-    # set_message(:player_tally, "#{@player.hand.display_value}")
-    # return
-    # --------------
-    
-    2.times do
+  def deal
+    2.times do |i|
       card = @deck.get_card
       @player.add_card(card)
       draw
       wait
-    end
-    set_message(:player_tally, "#{@player.hand.display_value}")
-  end
-  
-  def deal_to_dealer
-    # --- TEMP. These are just test deals
-    # deal_test_cards(@dealer, [@deck.get_card("10", "C"), @deck.get_card("A", "H")], true)
-    # set_message(:dealer_tally, "Dealer shows #{@dealer.hand.display_value}")
-    # return
-    # --------------
-
-    2.times do |i|
+      
       card = @deck.get_card
       card.face_up = false if i == 0
       @dealer.add_card(card)
       draw
-      wait
-    end
+      wait     
+    end  
+    set_message(:player_tally, "#{@player.hand.display_value}")
     set_message(:dealer_tally, "Dealer shows #{@dealer.hand.display_value}")
   end
     
