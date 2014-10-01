@@ -22,33 +22,31 @@ class Card
   
   def to_s
     c = face_up ? "#{SPACE}#{@face}#{@suit.symbol}#{SPACE * 2}" : "#{SPACE}#{'///'}#{SPACE}"
-    if suit.name == "H" || suit.name == "D"
-      sprintf("%s %s", Color.red(c), SPACE)
-      # sprintf("%s %s", c, SPACE)
-    else 
-      sprintf("%s %s", Color.black(c), SPACE)
-      # sprintf("%s %s", c, SPACE)
+    if !face_up
+      "#{Color.blue(c)}#{SPACE}"
+    elsif suit.name == "D" || suit.name == "H"
+      "#{Color.red(c)}#{SPACE}"
+    elsif suit.name == "C" || suit.name == "S"
+      "#{Color.black(c)}#{SPACE}"
     end
-    # the original uncolored way
-    # str = face_up ? "#{@face}#{@suit.symbol} #{' '*3}" : "#{'##'}#{' '*3}"
+    # the original uncolored variation
+    # str = face_up ? "#{@face}#{@suit.symbol} #{SPACE * 3}" : "#{'##'}#{SPACE * 3}"
   end
 end   #Card
 
-# do you want to have a stash that does not get altered and one that does when dealing?
-# so we can simply restore the orig deck on reset or shuffle
-# or maybe we just move the cards into a dealt array, and return them to cards on reset/shuffle
 class Deck  
   def initialize(cards)
     @cards = cards
     @cards.shuffle!
   end
   
-  # take the 'top' card off the deck, then add it back to the 'bottom'.
   def get_card(face = nil, suit_name = nil)
-    
+    # --------------------------------
     # for testing only: if any args passed, return the specified card
     return find_card(face, suit_name) if face && suit_name
+    # --------------------------------
     
+    # return the 'top' card off the deck, add it back to the 'bottom'.
     card = @cards.shift
     @cards.push(card)
     card
@@ -61,12 +59,14 @@ class Deck
     
   def shuffle
     @cards.shuffle!
+    # make sure all the cards are face up, since that's our default
+    @cards.each { |card| card.face_up = true}
   end
   
   def to_s
     "<Deck> [#{@cards.join(", ")}]"
   end
-end   #Deck
+end #Deck
 
 # this could be any poker or card game hand...
 class Hand
@@ -75,7 +75,7 @@ class Hand
     @cards = []
     @value = 0
   end
-end
+end #Hand
 
 # blackjack specific hand
 class BlackjackHand < Hand
@@ -95,15 +95,10 @@ class BlackjackHand < Hand
     else
       self.final_value
     end
-    # puts "soft_value: #{@soft_value} value: #{@value}"
   end
   
   def final_value
     [@value, @soft_value].max
-  end
-  
-  def clear
-    @cards = []
   end
   
   def to_s
@@ -134,7 +129,7 @@ class BlackjackHand < Hand
       end
     end
   end
-end   #Hand
+end #BlackjackHand
 
 class Player
   attr_accessor :name, :hand
@@ -151,13 +146,7 @@ class Player
   def reset
     @hand = BlackjackHand.new
   end
-end   #Player
-
-class Dealer < Player
-  def initialize(name)
-    super
-  end
-end   #Dealer
+end #Player
 
 # ======================================================
 #                          GAME
@@ -166,14 +155,14 @@ end   #Dealer
 class Game
   SUIT_CODES = [SuitCode.new("C", "\u2667"), SuitCode.new("D", "\u2662"), SuitCode.new("H", "\u2661"), SuitCode.new("S", "\u2664") ]
   FACES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
-  DASH = "-"
-  HLINE = DASH * 45 #75
+  DASH = Util.unicode_supported? ? "—" : "-"
+  HLINE = DASH * 40
     
   def initialize
     @deck = make_deck
     @player = Player.new("Player")
-    @dealer = Dealer.new("Dealer")
-    @messages = {game_status:"", player_status:"", dealer_status: ""}
+    @dealer = Player.new("Dealer")
+    @messages = {game_status: "", player_status: "", player_tally: "", dealer_status: "", dealer_tally: ""}
   end
   
   def run
@@ -182,7 +171,7 @@ class Game
     system 'clear'
     draw_title
     puts "Welcome, #{@player.name}! Ready to play?"
-    wait(1)
+    wait
     play
   end
   
@@ -202,30 +191,19 @@ class Game
     reset
     wait
     deal_to_player
+    wait
     deal_to_dealer
     wait
-    # test if the original deal results in a blackjack for player and/or dealer
+    player_turn
     if has_blackjack?(@player)
-      add_message(:player_status, "#{@player.name} has a blackjack!")
-      wait
-      show_dealer_cards
-      draw
-      wait
-      if has_blackjack?(@dealer)
-        add_message(:dealer_status, "#{@dealer.name} has a blackjaack!")
-        wait
-      end
+      reveal_dealer_cards
+      end_game
+    elsif bust?(@player)
       end_game
     else
-      player_turn
-      if bust?(@player)
-        end_game
-      else
-        wait(2)
-        dealer_turn
-        wait
-        end_game
-      end
+      dealer_turn
+      wait
+      end_game
     end
     wait
     puts "Play again?  [Y]es  [N]o"
@@ -242,29 +220,40 @@ class Game
     
   def end_game   
     if @player.hand.final_value == @dealer.hand.final_value
-      add_message(:game_status, "PUSH (#{@player.name} and #{@dealer.name} tie)!")
+      if has_blackjack?(@player) && !has_blackjack?(@dealer)
+        set_message(:game_status, "#{@player.name} WINS!")
+      elsif has_blackjack?(@dealer) && !has_blackjack?(@player)
+        set_message(:game_status, "#{@dealer.name} WINS!")
+      else
+        set_message(:game_status, "PUSH!  #{@player.name} and #{@dealer.name} tie.")
+      end
     elsif @player.hand.final_value > 21
-      add_message(:game_status, "#{@dealer.name} WINS!")
+      set_message(:game_status, "#{@dealer.name} WINS!")
     elsif @dealer.hand.final_value > 21
-      add_message(:game_status, "#{@player.name} WINS!")
+      set_message(:game_status, "#{@player.name} WINS!")
     elsif @player.hand.final_value > @dealer.hand.final_value
-      add_message(:game_status, "#{@player.name} WINS!")
+      set_message(:game_status, "#{@player.name} WINS!")
     else
-      add_message(:game_status, "#{@dealer.name} WINS!")
+      set_message(:game_status, "#{@dealer.name} WINS!")
     end
     flash_status
-    # draw
   end
   
   def player_turn
+    if has_blackjack?(@player)
+      set_message(:player_tally, @player.hand.final_value)
+      set_message(:player_status, "#{@player.name} has a Blackjack!")
+      return
+    end
+    
     begin
-      add_message(:game_status, "Your call, #{@player.name}. [H]it or [S]tay?")
+      set_message(:game_status, "Your call, #{@player.name}. [H]it or [S]tay?")
       input = gets.chomp.downcase
-      add_message(:game_status, "")
+      set_message(:game_status, "")
       if input == "h"
         hit(@player)
         if bust?(@player)
-          add_message(:player_status, "#{@player.name} busts!")
+          set_message(:player_status, "#{@player.name} busts!")
           break
         end
       elsif input == "s"
@@ -276,68 +265,88 @@ class Game
   
   # note: dealer stands on soft 17
   def dealer_turn
-    add_message(:game_status, "Dealer's turn")
-    wait
-    show_dealer_cards
+    reveal_dealer_cards
+    return if has_blackjack?(@dealer)
+
     wait
     while true
       hit(@dealer) if @dealer.hand.final_value < 17
       if bust?(@dealer)
-        add_message(:dealer_status, "#{@dealer.name} busts!")
+        set_message(:dealer_status, "#{@dealer.name} busts!")
         break
-     elsif @dealer.hand.final_value >= 17
+      elsif @dealer.hand.final_value >= 17
         stay(@dealer)
         break
       end
     end
   end
   
-  def show_dealer_cards
+  def reveal_dealer_cards
+    wait
     @dealer.hand.cards.each { |card| card.face_up = true }
     @dealer.hand.calculate_values 
-    add_message(:dealer_tally, "#{@dealer.hand.display_value}")
+    draw
+    set_message(:dealer_tally, "#{@dealer.hand.display_value}")
+    wait
+    if has_blackjack?(@dealer)
+      set_message(:dealer_status, "#{@dealer.name} has a blackjack!")
+      set_message(:dealer_tally, "#{@dealer.hand.final_value}")
+    end
     draw
   end
-  
+
   def hit(which_player)
     status_line = (which_player == @player) ? :player_status : :dealer_status
     tally_line = (which_player == @player) ? :player_tally : :dealer_tally
-    add_message(status_line, "#{which_player.name} hits.")
+    set_message(status_line, "#{which_player.name} hits.")
     wait(0.5)
-    add_message(status_line, "")
+    set_message(status_line, "")
     which_player.add_card(@deck.get_card)
     draw
-    add_message(tally_line, "#{which_player.hand.display_value}")
+    set_message(tally_line, "#{which_player.hand.display_value}")
     wait
   end
   
   def stay(which_player)
     status_line = (which_player == @player) ? :player_status : :dealer_status
     tally_line = (which_player == @player) ? :player_tally : :dealer_tally
-    add_message(status_line, "#{which_player.name} stays at #{which_player.hand.final_value}.")
-    add_message(tally_line, which_player.hand.final_value)
+    set_message(status_line, "#{which_player.name} stays at #{which_player.hand.final_value}.")
+    set_message(tally_line, which_player.hand.final_value)
+  end
+  
+  # for testing only
+  def deal_test_cards(which_player, cards, first_card_down = false)
+    cards.each_with_index do | card, i |
+      if first_card_down && i == 0
+        card.face_up = false
+      end
+      which_player.add_card(card)
+      draw
+      wait
+    end
   end
   
   def deal_to_player
-    # --- TEMP. These are test deals
-    # @player.add_card(@deck.get_card("A", "D"))
-    # @player.add_card(@deck.get_card("J", "H"))
+    # --- TEMP. These are just test deals
+    # deal_test_cards(@player, [@deck.get_card("A", "D"), @deck.get_card("10", "S")])
+    # set_message(:player_tally, "#{@player.hand.display_value}")
+    # return
     # --------------
     
     2.times do
-      card = @deck.get_card  # UNCOMMENT THESE LINES WHEN DONE TESTING!!
-      card.face_up = true
+      card = @deck.get_card
       @player.add_card(card)
       draw
       wait
     end
-    add_message(:player_tally, "#{@player.hand.display_value}")
+    set_message(:player_tally, "#{@player.hand.display_value}")
   end
   
   def deal_to_dealer
-    # --- TEMP. These are test deals
-    # @dealer.add_card(@deck.get_card("A", "C"))
-    # @dealer.add_card(@deck.get_card("K", "D"))
+    # --- TEMP. These are just test deals
+    # deal_test_cards(@dealer, [@deck.get_card("10", "C"), @deck.get_card("A", "H")], true)
+    # set_message(:dealer_tally, "Dealer shows #{@dealer.hand.display_value}")
+    # return
     # --------------
 
     2.times do |i|
@@ -347,7 +356,7 @@ class Game
       draw
       wait
     end
-    add_message(:dealer_tally, "Dealer shows #{@dealer.hand.display_value}")
+    set_message(:dealer_tally, "Dealer shows #{@dealer.hand.display_value}")
   end
     
   def get_player_name
@@ -355,17 +364,17 @@ class Game
     gets.chomp.capitalize
   end
   
-  def add_message(line, str)
+  def set_message(line, str)
     @messages[line] = str 
     draw
   end
   
   def clear_messages
-    @messages = {game_status:"", player_status:"", dealer_status: ""}
+    @messages = {game_status: "", player_status: "", player_tally: "", dealer_status: "", dealer_tally: ""}
     draw
   end
   
-  def wait(delay = 1)
+  def wait(delay = 0.8)
     sleep delay
   end
   
@@ -405,7 +414,6 @@ class Game
     puts "#{chr * 30}".center(75)
     puts "Tealeaf Casino Blackjack".center(75)
     puts "#{chr * 30}".center(75)
-    # puts "\n"
   end
   
   def flash_title  
@@ -425,9 +433,9 @@ class Game
   def flash_status
     str = @messages[:game_status]
     4.times do 
-      add_message(:game_status, "")
+      set_message(:game_status, "")
       sleep 0.3
-      add_message(:game_status, str)
+      set_message(:game_status, str)
       sleep 0.3
     end
   end
@@ -444,17 +452,11 @@ class Game
   
   def make_card(face, suit_code)
     suit = Suit.new(suit_code.ascii, nil)
-    suit.symbol = unicode_supported? ? suit_code.unicode : suit_code.ascii
+    suit.symbol = Util.unicode_supported? ? suit_code.unicode : suit_code.ascii
     Card.new(face, suit)
   end
   
-  # test if unicode support is available 
-  # found this test here: http://rosettacode.org/wiki/Terminal_control/Unicode_output#Ruby 
-  def unicode_supported?
-    ENV.values_at("LC_ALL","LC_CTYPE","LANG").compact.first.include?("UTF-8")
-  end  
-  
-end   #Game
+end #Game
 
 Game.new.run
 
