@@ -20,6 +20,15 @@ class Card
     @face_up
   end
   
+  # returns the top and bottom portions of the card
+  # print the exact same card data so the spacing matches & we avoid the unicode spacing mismatches
+  # but use coloring to hide the text on the top and bottom 
+  def edge
+    c = face_up ? "#{SPACE}#{@face}#{@suit.symbol}#{SPACE * 2}" : "#{SPACE}#{'///'}#{SPACE}"
+    face_up ? "#{Color.blank(c)}#{SPACE}" :  "#{Color.blue(c)}#{SPACE}" 
+  end
+  
+  # returns the content portion of the card
   def to_s
     c = face_up ? "#{SPACE}#{@face}#{@suit.symbol}#{SPACE * 2}" : "#{SPACE}#{'///'}#{SPACE}"
     if !face_up
@@ -372,21 +381,38 @@ class Game
   def draw_player
     puts "#{@player.name}"
     puts HLINE
-    str = ""
-    @player.hand.cards.each { |card| str += "#{card}" }
-    puts "#{str}"
+    
+    top = ""
+    @player.hand.cards.each { |card| top += "#{card.edge}" }
+    mid = ""
+    @player.hand.cards.each { |card| mid += "#{card}" }
+    bottom = ""
+    @player.hand.cards.each { |card| bottom += "#{card.edge}" }
+    
+    puts "#{top}"
+    puts "#{mid}"
+    puts "#{bottom}"
     puts HLINE
     puts @messages[:player_tally]
     puts @messages[:player_status]
-    puts "\n\n\n"
+    puts "\n"
   end
     
   def draw_dealer
     puts "#{@dealer.name}"
     puts HLINE
-    str = ""
-    @dealer.hand.cards.each { |card| str += "#{card}" }
-    puts "#{str}"
+    
+    top = ""
+    @dealer.hand.cards.each { |card| top += "#{card.edge}" }
+    mid = ""
+    @dealer.hand.cards.each { |card| mid += "#{card}" }
+    bottom = ""
+    @dealer.hand.cards.each { |card| bottom += "#{card.edge}" }
+    
+    puts "#{top}"
+    puts "#{mid}"
+    puts "#{bottom}"
+    
     puts HLINE
     puts @messages[:dealer_tally] 
     puts @messages[:dealer_status]
@@ -403,7 +429,6 @@ class Game
     system 'clear'
     sleep_time = 0.15
     3.times do
-      chr = ' '
       system 'clear'
       draw_title(false)
       sleep sleep_time

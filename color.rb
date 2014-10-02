@@ -14,6 +14,7 @@ class Color
   BG_BLACK = 40
   BG_WHITE = 47
   OFF = 0
+  HIDDEN_TEXT = 8
   BRIGHT_MODE = 1
   NORMAL_MODE = ""
   
@@ -31,6 +32,11 @@ class Color
   # but neither of those seem to be working for the background... 
   def self.blue(str)
     str = "#{ESC}#{BRIGHT_MODE};#{FG_BLUE};#{BG_WHITE}m#{str}#{ESC}#{OFF}m"
+  end
+  
+  # whtie on white (hidden text on white card)
+  def self.blank(str)
+    str = "#{ESC}#{HIDDEN_TEXT};#{BG_WHITE}m#{str}#{ESC}#{OFF}m"
   end
   
 end
