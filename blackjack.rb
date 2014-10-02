@@ -183,6 +183,7 @@ class Game
   def reset
     @player.reset
     @dealer.reset
+    @deck.shuffle
     clear_messages
     draw
   end
@@ -441,4 +442,3 @@ class Game
 end #Game
 
 Game.new.run
-
