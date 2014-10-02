@@ -177,7 +177,7 @@ class Game
   def run
     flash_title
     @player.name = get_player_name
-    system 'clear'
+    Util.clear_screen
     draw_title
     puts "Welcome, #{@player.name}! Ready to play?"
     wait
@@ -371,7 +371,7 @@ class Game
   end
   
   def draw
-    system 'clear'
+    Util.clear_screen
     draw_title
     draw_player
     draw_dealer
@@ -426,13 +426,13 @@ class Game
   end
   
   def flash_title  
-    system 'clear'
+    Util.clear_screen
     sleep_time = 0.15
     3.times do
-      system 'clear'
+      Util.clear_screen
       draw_title(false)
       sleep sleep_time
-      system 'clear'
+      Util.clear_screen
       draw_title(true)
       sleep sleep_time
     end
@@ -466,4 +466,5 @@ class Game
   
 end #Game
 
+# puts Util.windows?
 Game.new.run

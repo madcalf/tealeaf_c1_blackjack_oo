@@ -36,7 +36,7 @@ class Color
   
   # whtie on white (hidden text on white card)
   def self.blank(str)
-    str = "#{ESC}#{HIDDEN_TEXT};#{BG_WHITE}m#{str}#{ESC}#{OFF}m"
+    str = "#{ESC}#{BRIGHT_MODE};#{HIDDEN_TEXT};#{BG_WHITE}m#{str}#{ESC}#{OFF}m"
   end
   
 end
