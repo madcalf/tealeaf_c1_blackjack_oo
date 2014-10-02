@@ -1,9 +1,12 @@
 class Util
   
   # test if unicode support is available 
-  # found this test here: http://rosettacode.org/wiki/Terminal_control/Unicode_output#Ruby 
+  # found the ENV test here: http://rosettacode.org/wiki/Terminal_control/Unicode_output#Ruby 
   def self.unicode_supported?
-    ENV.values_at("LC_ALL","LC_CTYPE","LANG").compact.first.include?("UTF-8")
+    values = ENV.values_at("LC_ALL","LC_CTYPE","LANG").compact
+    # note: array is empty if none of these environment vars are found
+    return false if values.size == 0 
+    values.first.include?("UTF-8")
   end  
   
   # this Float test is common on SO
