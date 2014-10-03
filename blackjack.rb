@@ -20,26 +20,33 @@ class Card
     @face_up
   end
   
-  # returns the top and bottom portions of the card
-  # print the exact same card data so the spacing matches & we avoid the unicode spacing mismatches
-  # but use coloring to hide the text on the top and bottom 
-  def edge
-    c = face_up ? "#{SPACE}#{@face}#{@suit.symbol}#{SPACE * 2}" : "#{SPACE}#{'///'}#{SPACE}"
-    face_up ? "#{Color.blank(c)}#{SPACE}" :  "#{Color.blue(c)}#{SPACE}" 
+  def get_colored_str(str)
+    if !face_up
+      "#{Color.blue_white(str)}#{SPACE}"
+    elsif suit.name == "D" || suit.name == "H"
+      "#{Color.red_white(str)}#{SPACE}"
+    elsif suit.name == "C" || suit.name == "S"
+      "#{Color.black_white(str)}#{SPACE}"
+    end    
   end
   
-  # returns the content portion of the card
+  # returns the suit in the upper left corner
+  def top
+    s = face_up ? ("#{suit.symbol}").ljust(5) : ("#{'///'}").center(5)
+    get_colored_str(s)
+  end
+  
+  # returns the suit for lower right corner
+  def bottom
+    spacer = (suit.symbol.codepoints[0] < 100) ? "" : SPACE
+    s = face_up ? ("#{suit.symbol}#{spacer}").rjust(5) : ("#{'///'}").center(5)
+    get_colored_str(s)
+  end
+
+  # returns the face value of the card in the center
   def to_s
-    c = face_up ? "#{SPACE}#{@face}#{@suit.symbol}#{SPACE * 2}" : "#{SPACE}#{'///'}#{SPACE}"
-    if !face_up
-      "#{Color.blue(c)}#{SPACE}"
-    elsif suit.name == "D" || suit.name == "H"
-      "#{Color.red(c)}#{SPACE}"
-    elsif suit.name == "C" || suit.name == "S"
-      "#{Color.black(c)}#{SPACE}"
-    end
-    # the original uncolored variation
-    # str = face_up ? "#{@face}#{@suit.symbol} #{SPACE * 3}" : "#{'##'}#{SPACE * 3}"
+    c = face_up ? ("#{@face}").center(5) : ("#{'///'}").center(5)
+    get_colored_str(c)
   end
 end   #Card
 
@@ -229,20 +236,20 @@ class Game
   def end_game   
     if @player.hand.final_value == @dealer.hand.final_value
       if has_blackjack?(@player) && !has_blackjack?(@dealer)
-        set_message(:game_status, "#{@player.name} WINS!")
+        set_message(:game_status, Color.green("#{@player.name} WINS!", nil, false) )
       elsif has_blackjack?(@dealer) && !has_blackjack?(@player)
-        set_message(:game_status, "#{@dealer.name} WINS!")
+        set_message(:game_status, Color.red("#{@dealer.name} WINS!", nil, false))
       else
-        set_message(:game_status, "PUSH!  #{@player.name} and #{@dealer.name} tie.")
+        set_message(:game_status, Color.yellow("PUSH!  #{@player.name} and #{@dealer.name} tie."))
       end
     elsif @player.hand.final_value > 21
-      set_message(:game_status, "#{@dealer.name} WINS!")
+      set_message(:game_status, Color.red("#{@dealer.name} WINS!", nil, false))
     elsif @dealer.hand.final_value > 21
-      set_message(:game_status, "#{@player.name} WINS!")
+      set_message(:game_status, Color.green("#{@player.name} WINS!", nil, false) )
     elsif @player.hand.final_value > @dealer.hand.final_value
-      set_message(:game_status, "#{@player.name} WINS!")
+      set_message(:game_status, Color.green("#{@player.name} WINS!", nil, false) )
     else
-      set_message(:game_status, "#{@dealer.name} WINS!")
+      set_message(:game_status, Color.red("#{@dealer.name} WINS!", nil, false))
     end
     flash_status
   end
@@ -290,7 +297,7 @@ class Game
   end
   
   def reveal_dealer_cards
-    wait
+    wait 1.6
     @dealer.hand.cards.each { |card| card.face_up = true }
     @dealer.hand.calculate_values 
     draw
@@ -375,20 +382,16 @@ class Game
     draw_title
     draw_player
     draw_dealer
-    puts "\n#{@messages[:game_status]}"
+    puts "#{@messages[:game_status]}"
   end
     
   def draw_player
+    top = @player.hand.cards.map { |card| card.top }.join()
+    mid = @player.hand.cards.map { |card| card }.join()
+    bottom = @player.hand.cards.map { |card| card.bottom }.join()
+    
     puts "#{@player.name}"
     puts HLINE
-    
-    top = ""
-    @player.hand.cards.each { |card| top += "#{card.edge}" }
-    mid = ""
-    @player.hand.cards.each { |card| mid += "#{card}" }
-    bottom = ""
-    @player.hand.cards.each { |card| bottom += "#{card.edge}" }
-    
     puts "#{top}"
     puts "#{mid}"
     puts "#{bottom}"
@@ -399,20 +402,15 @@ class Game
   end
     
   def draw_dealer
+    top = @dealer.hand.cards.map { |card| card.top }.join()
+    mid = @dealer.hand.cards.map { |card| card }.join()
+    bottom = @dealer.hand.cards.map { |card| card.bottom }.join()
+
     puts "#{@dealer.name}"
     puts HLINE
-    
-    top = ""
-    @dealer.hand.cards.each { |card| top += "#{card.edge}" }
-    mid = ""
-    @dealer.hand.cards.each { |card| mid += "#{card}" }
-    bottom = ""
-    @dealer.hand.cards.each { |card| bottom += "#{card.edge}" }
-    
     puts "#{top}"
     puts "#{mid}"
     puts "#{bottom}"
-    
     puts HLINE
     puts @messages[:dealer_tally] 
     puts @messages[:dealer_status]
@@ -421,7 +419,7 @@ class Game
   def draw_title(with_marquee = true)
     with_marquee ? chr = "*" : chr = " "
     puts "#{chr * 30}".center(75)
-    puts "Tealeaf Casino Blackjack".center(75)
+    puts Color.yellow("Tealeaf Casino Blackjack".center(75))
     puts "#{chr * 30}".center(75)
   end
   
@@ -466,5 +464,4 @@ class Game
   
 end #Game
 
-# puts Util.windows?
 Game.new.run
