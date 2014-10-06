@@ -1,6 +1,5 @@
 # encoding: UTF-8
 # Blackjack OOP
-require 'pry'
 require_relative 'util'
 require_relative 'color'
 
